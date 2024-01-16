@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        form {
+            max-width: 400px;
+            margin: auto;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 16px;
+            box-sizing: border-box;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 16px;
+        }
+
+        .post {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <form id="postForm">
+        <label for="uniqueCode">Enter Unique Code:</label>
+        <input type="text" id="uniqueCode" name="uniqueCode" required>
+
+        <label for="postContent">Write something:</label>
+        <textarea id="postContent" name="postContent" rows="4" required></textarea>
+
+        <label for="imageUpload">Upload an image:</label>
+        <input type="file" id="imageUpload" name="imageUpload" accept="image/*">
+
+        <button type="button" onclick="submitPost()">Post</button>
+    </form>
+
+    <label for="searchPost">Search by Unique Code:</label>
+    <input type="text" id="searchPost">
+    <button type="button" onclick="searchPosts()">Search</button>
+
+    <div id="postsContainer"></div>
+
+    <script>
+        const password = "Rey1322"; // Change the password here
+
+        const savedPosts = JSON.parse(localStorage.getItem('posts')) || [];
+        const postsContainer = document.getElementById('postsContainer');
+
+        // Display saved posts
+        savedPosts.forEach(postData => {
+            const postDiv = createPostElement(postData);
+            postsContainer.appendChild(postDiv);
+        });
+
+        function createPostElement(postData) {
+            const postDiv = document.createElement('div');
+            postDiv.classList.add('post');
+
+            if (postData.content) {
+                const contentParagraph = document.createElement('p');
+                contentParagraph.textContent = postData.content;
+                postDiv.appendChild(contentParagraph);
+            }
+
+            if (postData.image) {
+                const imageElement = document.createElement('img');
+                imageElement.src = postData.image;
+                postDiv.appendChild(imageElement);
+            }
+
+            const deleteBtn = document.createElement('span');
+            deleteBtn.classList.add('delete-btn');
+            deleteBtn.innerHTML = '&#10006;'; // Close symbol
+            deleteBtn.onclick = () => showDeleteConfirmation(postData);
+            postDiv.appendChild(deleteBtn);
+
+            return postDiv;
+        }
+
+        function submitPost() {
+            const uniqueCodeInput = document.getElementById('uniqueCode');
+            const postContent = document.getElementById('postContent').value;
+            const imageUpload = document.getElementById('imageUpload').files[0];
+
+            if (validateUniqueCode(uniqueCodeInput.value) && (postContent || imageUpload)) {
+                if (!isCodeUsed(uniqueCodeInput.value)) {
+                    const postDiv = createPostElement({ content: postContent });
+
+                    if (imageUpload) {
+                        const imageElement = document.createElement('img');
+                        imageElement.src = URL.createObjectURL(imageUpload);
+                        postDiv.appendChild(imageElement);
+
+                        // Save image URL in the post data
+                        postDiv.image = imageElement.src;
+                    }
+
+                    postsContainer.insertBefore(postDiv, postsContainer.firstChild);
+
+                    // Save posts to localStorage
+                    const currentPosts = JSON.parse(localStorage.getItem('posts')) || [];
+                    currentPosts.unshift({ content: postContent, image: postDiv.image, uniqueCode: uniqueCodeInput.value });
+                    localStorage.setItem('posts', JSON.stringify(currentPosts));
+
+                    // Clear the form after posting
+                    document.getElementById('postForm').reset();
+                } else {
+                    alert('This unique code has already been used. Please enter a different one.');
+                }
+            } else {
+                alert('Please enter a valid unique code and fill in the form or upload an image before posting.');
+            }
+        }
+
+        function validateUniqueCode(code) {
+            // You can implement your own validation logic for unique codes here
+            return code.trim() !== '';
+        }
+
+        function isCodeUsed(code) {
+            // Check if the code is already used in existing posts
+            return savedPosts.some(post => post.uniqueCode === code);
+        }
+
+        function searchPosts() {
+            const searchTerm = document.getElementById('searchPost').value.toLowerCase();
+            const filteredPosts = savedPosts.filter(post => post.uniqueCode.toLowerCase().includes(searchTerm));
+
+            // Clear existing posts
+            postsContainer.innerHTML = '';
+
+            // Display filtered posts
+            filteredPosts.forEach(postData => {
+                const postDiv = createPostElement(postData);
+                postsContainer.appendChild(postDiv);
+            });
+        }
+
+        function showDeleteConfirmation(postData) {
+            const passwordInput = prompt('Please enter the password to delete this post:');
+            if (passwordInput === password) {
+                const indexToDelete = savedPosts.findIndex(post => post.uniqueCode === postData.uniqueCode);
+                if (indexToDelete !== -1) {
+                    savedPosts.splice(indexToDelete, 1);
+                    localStorage.setItem('posts', JSON.stringify(savedPosts));
+                    location.reload(); // Refresh the page after deletion
+                }
+            } else {
+                alert('Incorrect password. Deletion canceled.');
+            }
+        }
+    </script>
+</body>
+</html>
